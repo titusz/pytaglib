@@ -23,4 +23,4 @@ jobs:
       with:
         python-versions: 'cp36-cp36m cp37-cp37m'
         build-requirements: 'cython'
-        system-packages: 'python-devel taglib-devel'
+        system-packages: 'libtag1-dev'
