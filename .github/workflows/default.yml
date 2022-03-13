@@ -4,24 +4,51 @@ on: [push]
 
 jobs:
   build:
-    name: Build manylinux wheels
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10"]
+        os: [ubuntu-18.04, macos-10.15, windows-2016]
+    runs-on: ${{ matrix.os }}
     env:
       TAGLIB_HOME: taglib-install
       PYTAGLIB_CYTHONIZE: 1
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Set up Python
-        uses: actions/setup-python@v1
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
         with:
-          python-version: 3.8
-      - name: Build wheels
-        uses: RalfG/python-wheels-manylinux-build@v0.3.2-manylinux2010_x86_64
+          python-version: ${{ matrix.python-version }}
+      - name: cache built taglib on windows
+        uses: actions/cache@v2
+        if: ${{ runner.os == 'Windows' }}
         with:
-          python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
-          build-requirements: 'cython'
-          system-packages: 'python-devel taglib-devel'
-      - uses: actions/upload-artifact@v2
+          path: ${{ env.TAGLIB_HOME }}
+          # renew the cache when how taglib is built changes (e.g. version update)
+          key: taglib-install-windows-${{ hashFiles('build_taglib_windows.py') }}
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: build TagLib (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: python build_taglib_windows.py --install-dest=$Env:TAGLIB_HOME
+      - name: Install TagLib (Unix)
+        if: ${{ runner.os != 'Windows' }}
+        run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y libtag1-dev ; else brew install taglib ; fi
+      - name: install pip dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest Cython wheel
+      - name: Build
+        run: python setup.py build install
+      - name: bdist
+        run: python setup.py bdist_wheel
+      - name: Test with pytest
+        run: pytest
+      - name: Collect shared libs (Linux)
+        run:|
+          python -m pip install auditwheel
+          auditwheel dist/*.whl
+      - name: upload wheel
+        uses: actions/upload-artifact@v2
         with:
-          path: dist/*.whl
+          name: dist
+          path: dist
+          retention-days: 5
