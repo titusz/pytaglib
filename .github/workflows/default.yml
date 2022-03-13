@@ -1,27 +1,70 @@
-name: CI
+name: build-wheels
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build-wheels:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10"]
+        os: [ubuntu-18.04, macos-10.15, windows-2016]
+    runs-on: ${{ matrix.os }}
     env:
       TAGLIB_HOME: taglib-install
       PYTAGLIB_CYTHONIZE: 1
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-    - name: build manylinux python wheels
-      uses: RalfG/python-wheels-manylinux-build@v0.4.2
-      with:
-        python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
-        build-requirements: 'cython'
-        system-packages: 'libtag1-dev'
-    - name: upload wheels
-      uses: actions/upload-artifact@v2
-      with:
-        name: dist
-        path: dist
-        retention-days: 5
+      - uses: actions/checkout@v2
+      - name: set up python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: cache built taglib (windows)
+        uses: actions/cache@v2
+        if: ${{ runner.os == 'Windows' }}
+        with:
+          path: ${{ env.TAGLIB_HOME }}
+          # renew the cache when how taglib is built changes (e.g. version update)
+          key: taglib-install-windows-${{ hashFiles('build_taglib_windows.py') }}
+
+      - uses: ilammy/msvc-dev-cmd@v1
+      - name: build taglib (Windows)
+        if: ${{ runner.os == 'Windows' }}
+        run: python build_taglib_windows.py --install-dest=$Env:TAGLIB_HOME
+
+      - name: install taglib (macos)
+        if: ${{ runner.os == 'macOS' }}
+        run: brew install taglib
+
+      - name: install pip dependencies
+        if: ${{ runner.os != 'Linux'}}
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest Cython wheel
+
+      - name: build manylinux python wheels
+        uses: RalfG/python-wheels-manylinux-build@v0.4.2
+        if: ${{ runner.os == 'Linux' && matrix.python-version == '3.8'}}
+        with:
+          python-versions: 'cp37-cp37m cp38-cp38 cp39-cp39 cp310-cp310'
+          build-requirements: 'cython'
+          system-packages: 'libtag1-dev'
+
+      - name: build (MacOS, Windows)
+        if: ${{ runner.os != 'Linux'}}
+        run: |
+          python setup.py build install
+          python setup.py bdist_wheel
+
+      - name: Collect shared libs (MacOS)
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          python -m pip install delocate
+          delocate-wheel fixed_wheels -v dist/*-macosx*.whl
+
+      - name: upload wheels
+        uses: actions/upload-artifact@v2
+        with:
+          name: dist
+          path: dist
+          retention-days: 5
