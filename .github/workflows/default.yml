@@ -63,7 +63,7 @@ jobs:
           delocate-wheel -v dist/*-macosx*.whl
 
       - name: cleanup wheels
-        run: rm dist/*-linux_*.whl
+        run: rm -f dist/*-linux_*.whl
 
       - name: upload wheels
         uses: actions/upload-artifact@v2
