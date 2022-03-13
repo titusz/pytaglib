@@ -1,61 +1,37 @@
-name: Python package
+name: Build
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10"]
-        os: [ubuntu-18.04, macos-10.15, windows-2016]
+  build_wheels:
+    name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, macOS-10.15]
     env:
       TAGLIB_HOME: taglib-install
       PYTAGLIB_CYTHONIZE: 1
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: cache built taglib on windows
-        uses: actions/cache@v2
-        if: ${{ runner.os == 'Windows' }}
-        with:
-          path: ${{ env.TAGLIB_HOME }}
-          # renew the cache when how taglib is built changes (e.g. version update)
-          key: taglib-install-windows-${{ hashFiles('build_taglib_windows.py') }}
-      - uses: ilammy/msvc-dev-cmd@v1
-      - name: build TagLib (Windows)
-        if: ${{ runner.os == 'Windows' }}
-        run: python build_taglib_windows.py --install-dest=$Env:TAGLIB_HOME
-      - name: Install TagLib (Unix)
-        if: ${{ runner.os != 'Windows' }}
+
+      # Used to host cibuildwheel
+      - uses: actions/setup-python@v2
+
+      - name: Install cibuildwheel
+        run: python -m pip install cibuildwheel==2.3.1
+
+      - name: Install TagLib
         run: if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get install -y libtag1-dev ; else brew install taglib ; fi
+
       - name: install pip dependencies
         run: |
           python -m pip install --upgrade pip
           pip install pytest Cython wheel
-      - name: Build
-        run: python setup.py build install
-      - name: bdist
-        run: python setup.py bdist_wheel
-      - name: Test with pytest
-        run: pytest
-      - name: Collect shared libs (Linux)
-        if: ${{ runner.os == 'Linux' }}
-        run: |
-          python -m pip install auditwheel
-          auditwheel repair dist/*.whl
-      - name: Collect shared libs (MacOS)
-        if: ${{ runner.os == 'macOS' }}
-        run: |
-          python -m pip install delocate
-          delocate-wheel -w fixed_wheels -v dist/*.whl
-      - name: upload wheel
-        uses: actions/upload-artifact@v2
+
+      - name: Build wheels
+        run: python -m cibuildwheel --output-dir wheelhouse
+
+      - uses: actions/upload-artifact@v2
         with:
-          name: dist
-          path: dist
-          retention-days: 5
+          path: ./wheelhouse/*.whl
