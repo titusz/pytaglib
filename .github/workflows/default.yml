@@ -63,6 +63,7 @@ jobs:
           delocate-wheel -v dist/*-macosx*.whl
 
       - name: cleanup wheels
+        if: ${{ runner.os == 'Linux' && matrix.python-version == '3.8'}}
         run: rm -f dist/*-linux_*.whl
 
       - name: upload wheels
