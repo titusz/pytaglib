@@ -62,9 +62,11 @@ jobs:
           python -m pip install delocate
           delocate-wheel -v dist/*-macosx*.whl
 
+      - name: cleanup wheels
+        run: rm dist/*-linux_*.whl
+
       - name: upload wheels
         uses: actions/upload-artifact@v2
-        run: rm dist/*-linux_*.whl
         with:
           name: dist
           path: dist/*.whl
