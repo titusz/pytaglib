@@ -64,7 +64,8 @@ jobs:
 
       - name: upload wheels
         uses: actions/upload-artifact@v2
+        run: rm dist/*-linux_*.whl
         with:
           name: dist
-          path: dist
+          path: dist/*.whl
           retention-days: 5
