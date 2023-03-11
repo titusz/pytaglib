@@ -62,7 +62,7 @@ def version():
 
 
 setup(
-    name='pytaglib',
+    name='pytaglib-wheel',
     description='cross-platform, Python audio metadata ("tagging") library based on TagLib',
     long_description=readme(),
     long_description_content_type='text/markdown',
