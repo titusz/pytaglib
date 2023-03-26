@@ -1,5 +1,9 @@
-# **pytaglib**
-[![PyPI](https://img.shields.io/pypi/v/pytaglib.svg)](https://pypi.org/project/pytaglib/)
+# **pytaglib-wheel**
+
+> **Warning**<br>
+> This is an obsolete fork of the original [pytaglib](https://github.com/supermihi/pytaglib) that
+> was released to provide binary wheels for some platforms. Meanwhile, the original upstream has
+> provided binary wheels. Please switch to https://github.com/supermihi/pytaglib
 
 pytaglib is a [Python](https://www.python.org) audio tagging library. It is cross-platform and very simple to use yet fully featured:
  - [supports more than a dozen file formats](https://taglib.org/) including mp3, flac, ogg, wma, and mp4,
