@@ -45,26 +45,4 @@ jobs:
           name: bdist-${{ matrix.os }}
           path: ./wheelhouse/*.whl
           retention-days: 5
-  publish:
-    runs-on: ubuntu-latest
-    needs: [build_wheels, sdist]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-    steps:
-      - name: download source wheel
-        uses: actions/download-artifact@v4
-        with:
-          name: sdist
-          path: wheels
-      - name: download binary wheels
-        uses: actions/download-artifact@v4
-        with:
-          pattern: bdist-*
-          path: wheels
-          merge-multiple: true
-      - name: publish package pypi.org
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          user: __token__
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          skip-existing: true
-          packages-dir: wheels
+
